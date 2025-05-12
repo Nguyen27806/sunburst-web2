@@ -2,23 +2,38 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-st.title("Sunburst Chart: Proportion of SAT Score by Field of Study")
+st.title("Sunburst: Field of Study and SAT Score Percentile Levels")
 
-# Upload file
 uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
 if uploaded_file is not None:
     df = pd.read_excel(uploaded_file, sheet_name="education_career_success")
 
-    sat_by_field = df.groupby('Field_of_Study')['SAT_Score'].sum().reset_index()
-    sat_by_field['Proportion'] = sat_by_field['SAT_Score'] / sat_by_field['SAT_Score'].sum()
+    # Tính các mốc phần trăm
+    low = df['SAT_Score'].quantile(0.33)
+    high = df['SAT_Score'].quantile(0.66)
 
+    # Phân loại SAT Score theo phần trăm
+    def sat_percentile(score):
+        if score <= low:
+            return 'Thấp (<= 33%)'
+        elif score <= high:
+            return 'Trung bình (33%-66%)'
+        else:
+            return 'Cao (> 66%)'
+
+    df['SAT_Level'] = df['SAT_Score'].apply(sat_percentile)
+
+    # Nhóm dữ liệu
+    grouped = df.groupby(['Field_of_Study', 'SAT_Level']).size().reset_index(name='Count')
+
+    # Vẽ sunburst
     fig = px.sunburst(
-        sat_by_field,
-        path=['Field_of_Study'],
-        values='Proportion',
-        title='Proportion of SAT Score by Field of Study',
-        color='Proportion',
-        color_continuous_scale='Blues'
+        grouped,
+        path=['Field_of_Study', 'SAT_Level'],
+        values='Count',
+        title='Phân loại SAT Score theo phần trăm trong từng ngành học',
+        color='Count',
+        color_continuous_scale='YlGnBu'
     )
 
     st.plotly_chart(fig)
